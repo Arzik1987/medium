@@ -211,7 +211,7 @@ plot_data <- function(data, title) {
     geom_line() +
     scale_x_log10() +
     scale_y_log10() +
-    labs(title = title, x = "points", y = "time, ms") +
+    labs(title = title, x = "Points", y = "Time, ms") +
     theme(plot.title = element_text(size = 28, hjust = 0.5),
           axis.title.x = element_text(size = 24, vjust = 0.5), 
           axis.title.y = element_text(size = 24, vjust = 0.5), 
@@ -234,7 +234,7 @@ ggsave("combined_plot.png", plot = grid_plot, width = 16, height = 4.5, dpi = 30
 ################################################################################
 
 
-resc <- resm <- resx <- matrix(ncol = 3, nrow = 3)
+resc <- resm <- resx <- matrix(ncol = 4, nrow = 3)
 npts <- c(100,1000,10000)
 rhos <- c(0.3, 0.5, 0.7, 0.9)
 
@@ -249,10 +249,13 @@ for(i in 1:3){
       xicors <- c(xicors, xicor(d[,1],d[,2]))
     }
     resc[i,j] <- sd(cors)/mean(cors)
-    resm(mics)/mean(mics)
-    resx(xicors)/mean(xicors)
+    resm[i,j] <- sd(mics)/mean(mics)
+    resx[i,j] <- sd(xicors)/mean(xicors)
   }
 }
 
+write.csv(round(resc, 3), "cor.csv")
+write.csv(round(resm, 3), "corm.csv")
+write.csv(round(resx, 3), "corx.csv")
 
 
