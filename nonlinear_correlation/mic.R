@@ -3,11 +3,13 @@ library(FNN)
 library(MASS)
 library(ggplot2)
 library(gridExtra)
+library(microbenchmark)
 
+
+# convert MI to mic in [0,1]
 mic <- function(x,y,k = 2){
   return(sqrt(1-exp(-2*max(0,mutinfo(x,y,k)))))
 }
-
 
 # Function to generate donut data
 gen_donut <- function(n, th) {
@@ -26,6 +28,37 @@ gen_donut <- function(n, th) {
   return(data.frame(x = x, y = y))
 }
 
+#function to generate parabolic data
+gen_parab <- function(n,noisel){
+  x <- runif(n, -1, 1)
+  y <- x^2 + runif(n, -noisel, noisel)
+  return(data.frame(x = x, y = y))
+}
+
+# function to generate normal data
+gen_norm <- function(n, rho){
+  # Define the number of samples, means, and desired correlation
+  means <- c(0, 0)  # Means of the two variables
+  
+  # Create the covariance matrix based on the specified correlation
+  cov_matrix <- matrix(c(1, rho, rho, 1), nrow=2)
+  
+  # Generate the correlated normal variables
+  correlated_data <- as.data.frame(mvrnorm(n=n, mu=means, Sigma=cov_matrix))
+  colnames(correlated_data) <- c("x", "y")
+  return(correlated_data)
+}
+
+gen_unif <- function(n){
+  x <- runif(n, 0, 1)
+  y <- runif(n, 0, 1)
+  return(data.frame(x = x, y = y))
+}
+
+######################
+#### NONLINEARITY ####
+######################
+
 # Generate data
 set.seed(1000)
 d1 <- gen_donut(10000, 1)
@@ -41,7 +74,7 @@ stats3 <- list(cor = cor(d3$x, d3$y), mic = mic(d3$x, d3$y), xicor = xicor(d3$x,
 plot_donut <- function(data, stats) {
   p <- ggplot(data, aes(x = x, y = y)) +
     geom_point(alpha = 0.4, color = "purple") +
-    ggtitle(sprintf("??: %.4f,\n R: %.4f,\n ??: %.4f", stats$cor, stats$mic, stats$xicor)) +
+    ggtitle(sprintf("\u03C1: %.4f,\n R: %.4f,\n \u03BE: %.4f", stats$cor, stats$mic, stats$xicor)) +
     theme_minimal() +
     theme(plot.title = element_text(size = 28, hjust = 0.5),
           axis.title.x = element_blank(),  # Remove x-axis title
@@ -61,16 +94,12 @@ p3 <- plot_donut(d3, stats3)
 grid_plot <- grid.arrange(p1, p2, p3, nrow = 1)
 
 # Save the arranged plot to a PNG file
-ggsave("combined_plot.png", plot = grid_plot, width = 16, height = 6.5, dpi = 300)
+ggsave("nonlinearity_plot.png", plot = grid_plot, width = 16, height = 6.5, dpi = 300)
 
-################################################################################
+######################
+#### SYMMETRY ########
+######################
   
-gen_parab <- function(n,noisel){
-  x <- runif(n, -1, 1)
-  y <- x^2 + runif(n, -noisel, noisel)
-  return(data.frame(x = x, y = y))
-}
-
 # Generate data
 set.seed(2000)
 d1 <- gen_parab(10000, 1.5)
@@ -90,7 +119,7 @@ stats3 <- list(cor = cor(d3$x, d3$y), mic = mic(d3$x, d3$y), xicor = xicor(d3$x,
 plot_parab <- function(data, stats) {
   p <- ggplot(data, aes(x = x, y = y)) +
     geom_point(alpha = 0.4, color = "orange") +
-    ggtitle(sprintf("??: %.4f,\n R: %.4f,\n ??(x,y): %.4f,\n ??(y,x): %.4f", stats$cor, stats$mic, stats$xicor, stats$xicori)) +
+    ggtitle(sprintf("\u03C1: %.4f,\n R: %.4f,\n \u03BE(x,y): %.4f,\n \u03BE(y,x): %.4f", stats$cor, stats$mic, stats$xicor, stats$xicori)) +
     theme_minimal() +
     theme(plot.title = element_text(size = 28, hjust = 0.5),
           axis.title.x = element_blank(),  # Remove x-axis title
@@ -110,22 +139,11 @@ p3 <- plot_parab(d3, stats3)
 grid_plot <- grid.arrange(p1, p2, p3, nrow = 1)
 
 # Save the arranged plot to a PNG file
-ggsave("combined_plot.png", plot = grid_plot, width = 16, height = 6.5, dpi = 300)
+ggsave("symmetry_plot.png", plot = grid_plot, width = 16, height = 6.5, dpi = 300)
 
-################################################################################
-
-gen_norm <- function(n, rho){
-  # Define the number of samples, means, and desired correlation
-  means <- c(0, 0)  # Means of the two variables
-  
-  # Create the covariance matrix based on the specified correlation
-  cov_matrix <- matrix(c(1, rho, rho, 1), nrow=2)
-  
-  # Generate the correlated normal variables
-  correlated_data <- as.data.frame(mvrnorm(n=n, mu=means, Sigma=cov_matrix))
-  colnames(correlated_data) <- c("x", "y")
-  return(correlated_data)
-}
+######################
+#### CONSISTENCY #####
+######################
 
 # Generate data
 set.seed(3000)
@@ -142,7 +160,7 @@ stats3 <- list(cor = cor(d3$x, d3$y), mic = mic(d3$x, d3$y), xicor = xicor(d3$x,
 plot_norm <- function(data, stats) {
   p <- ggplot(data, aes(x = x, y = y)) +
     geom_point(alpha = 0.8, color = "lightblue") +
-    ggtitle(sprintf("??: %.4f,\n R: %.4f,\n ??: %.4f", stats$cor, stats$mic, stats$xicor)) +
+    ggtitle(sprintf("\u03C1: %.4f,\n R: %.4f,\n \u03BE: %.4f", stats$cor, stats$mic, stats$xicor)) +
     theme_minimal() +
     theme(plot.title = element_text(size = 28, hjust = 0.5),
           axis.title.x = element_blank(),  # Remove x-axis title
@@ -162,45 +180,36 @@ p3 <- plot_norm(d3, stats3)
 grid_plot <- grid.arrange(p1, p2, p3, nrow = 1)
 
 # Save the arranged plot to a PNG file
-ggsave("combined_plot.png", plot = grid_plot, width = 16, height = 6.5, dpi = 300)
+ggsave("consistency_plot.png", plot = grid_plot, width = 16, height = 6.5, dpi = 300)
 
 
-################################################################################
-
-library(microbenchmark)
-
-gen_unif <- function(n){
-  x <- runif(n, 0, 1)
-  y <- runif(n, 0, 1)
-  return(data.frame(x = x, y = y))
-}
-
+######################
+#### SCALABILITY #####
+######################
 
 n_values <- c(100, 1000, 10000, 50000)
+nrep = 7
 
 # Initialize a list to store results
-resc <- resm <- resx <- matrix(ncol = 4, nrow = 6)
+resc <- resm <- resx <- matrix(ncol = length(n_values), nrow = nrep)
 
 # Loop over the range of n values
 for (i in 1:length(n_values)) {
   print(i)
   n = n_values[i]
-
-  for(j in 1:6){
+  for(j in 1:nrep){
     d <- gen_unif(n)
-    resc[j,i] <- microbenchmark(cor(d$x, d$y), times = 1)[1,2]/10^6
-    resm[j,i] <- microbenchmark(mic(d$x, d$y), times = 1)[1,2]/10^6
-    resx[j,i] <- microbenchmark(xicor(d$x, d$y), times = 1)[1,2]/10^6
+    resc[j,i] <- microbenchmark(cor(d$x, d$y), times = 1)[1,2]
+    resm[j,i] <- microbenchmark(mic(d$x, d$y), times = 1)[1,2]
+    resx[j,i] <- microbenchmark(xicor(d$x, d$y), times = 1)[1,2]
   }
-
 }
-
 
 # Create data frames
 
-resc <- data.frame(x = n_values, y = apply(resc[2:6,], 2, mean))
-resm <- data.frame(x = n_values, y = apply(resm[2:6,], 2, mean))
-resx <- data.frame(x = n_values, y = apply(resx[2:6,], 2, mean))
+resc <- data.frame(x = n_values, y = apply(resc[1:nrep,], 2, mean)/10^6)
+resm <- data.frame(x = n_values, y = apply(resm[1:nrep,], 2, mean)/10^6)
+resx <- data.frame(x = n_values, y = apply(resx[1:nrep,], 2, mean)/10^6)
 
 # Plotting function using ggplot2
 plot_data <- function(data, title) {
@@ -219,20 +228,22 @@ plot_data <- function(data, title) {
           axis.text.y = element_text(size = 24))
 }
 
-
 # Create plots
-p1 <- plot_data(resc, "??")
+p1 <- plot_data(resc, "\u03C1")
 p2 <- plot_data(resm, "R")
-p3 <- plot_data(resx, "??")
+p3 <- plot_data(resx, "\u03BE")
 
 # Arrange plots in a row
 grid_plot <- grid.arrange(p1, p2, p3, nrow = 1)
 
-ggsave("combined_plot.png", plot = grid_plot, width = 16, height = 4.5, dpi = 300)
+ggsave("scalability_plot.png", plot = grid_plot, width = 16, height = 4.5, dpi = 300)
 
 
-################################################################################
+######################
+#### PRECISION #######
+######################
 
+set.seed(5000)
 
 resc <- resm <- resx <- matrix(ncol = 4, nrow = 3)
 npts <- c(100,1000,10000)
@@ -254,8 +265,6 @@ for(i in 1:3){
   }
 }
 
-write.csv(round(resc, 3), "cor.csv")
-write.csv(round(resm, 3), "corm.csv")
-write.csv(round(resx, 3), "corx.csv")
+write.csv(round(cbind(t(resc), t(resm), t(resx)), 3), "precision.csv")
 
 
