@@ -1,20 +1,46 @@
 # ML Metamorphosis
 
-This subproject explores a simple "ML metamorphosis" workflow on MNIST: start with a small labeled subset, train a neural network, use the network to pseudo-label high-confidence unlabeled examples, add those examples back into the training set, and repeat. The idea matches the article referenced in [`AGENT_TASK.md`](/workspaces/medium/metamorphosis/AGENT_TASK.md): one model's output changes the effective training data for the next training round.
+This subproject accompanies the article ["ML Metamorphosis: Chaining ML Models for Optimized Results"](https://medium.com/data-science/ml-metamorphosis-chaining-ml-models-for-optimized-results-d89d952627a9), also mirrored on [Towards Data Science](https://towardsdatascience.com/ml-metamorphosis-chaining-ml-models-for-optimized-results-d89d952627a9/).
 
-The codebase is adapted from Niklas von Moers' self-training experiment and extends it with an additional classical model step: training and evaluating a multiclass `DecisionTreeClassifier` on the same evolving training subset before each CNN self-training iteration.
+It contains a small MNIST experiment whose main purpose is to improve a decision tree by first passing through a CNN stage. The CNN is not the final model of interest here; it is the intermediate model used to generate additional pseudo-labeled training data for the tree.
 
-## Project layout
+## What is in this folder
 
-- [`scripts/run_experiment.py`](/workspaces/medium/metamorphosis/scripts/run_experiment.py) is the entry point. It configures the experiment, runs several iterations, saves metrics to `output/*.json`, and plots test accuracy over time.
-- [`self_training/experiment.py`](/workspaces/medium/metamorphosis/self_training/experiment.py) contains the core experiment loop: MNIST loading, labeled subset initialization, CNN training, pseudo-label generation, train-set expansion, and the added decision-tree training and evaluation.
-- [`self_training/cnn.py`](/workspaces/medium/metamorphosis/self_training/cnn.py) defines the PyTorch CNN and its training helper.
-- [`self_training/experiment_result.py`](/workspaces/medium/metamorphosis/self_training/experiment_result.py), [`self_training/metric_collection.py`](/workspaces/medium/metamorphosis/self_training/metric_collection.py), and [`self_training/plot.py`](/workspaces/medium/metamorphosis/self_training/plot.py) handle metric serialization and visualization.
-- [`requirements.txt`](/workspaces/medium/metamorphosis/requirements.txt) lists the Python dependencies used by the experiment.
+- `scripts/run_experiment.py`: entry point that runs the experiment, saves a timestamped result JSON under `output/`, and plots test accuracy by iteration.
+- `self_training/experiment.py`: the main experiment loop, including MNIST loading, subset initialization, CNN self-training, pseudo-label selection, and train-set updates.
+- `self_training/cnn.py`: the PyTorch CNN and its training helper.
+- `self_training/experiment_result.py`, `self_training/metric_collection.py`, `self_training/plot.py`: result serialization, metric containers, and plotting helpers.
+- `requirements.txt`: Python dependencies for the experiment.
 
-## Running the experiment
+## Main idea
 
-From [`metamorphosis/`](/workspaces/medium/metamorphosis):
+The article's central idea is not just self-training in isolation. It is model chaining:
+
+- Model A: train a CNN on a small labeled subset of MNIST
+- Data 2: use the CNN's high-confidence predictions to create a larger pseudo-labeled transfer set
+- Model B: train the target model, here a multiclass decision tree, on that enriched dataset
+
+The intent is to get a better decision tree than you would get by fitting the tree directly on the limited labeled data alone. In the article, this is the key metamorphosis step: a stronger but less interpretable model helps produce data that a simpler, more interpretable model can learn from more effectively.
+
+In this repository, the process is implemented on MNIST with:
+
+- an initial labeled subset of `1000` training examples
+- a confidence threshold of `0.98` for accepting pseudo-labels
+- up to `10` self-training iterations
+
+## What Was Added
+
+This code is based on [Niklas von Moers' self-training project](https://github.com/NiklasvonM/Self-Training), but the main addition is the decision-tree stage that turns the self-training setup into the metamorphosis pipeline described in the article.
+
+Specifically, this repository adds:
+
+- training a multiclass `DecisionTreeClassifier` on the current training subset as it grows through pseudo-labeling
+- evaluating that decision tree on the MNIST test set during each iteration
+- the extra `scikit-learn` and `numpy` dependencies needed for that target-model step
+
+## How to run it
+
+From this directory:
 
 ```bash
 python -m venv .venv
@@ -23,23 +49,14 @@ pip install -r requirements.txt
 python scripts/run_experiment.py
 ```
 
-What the run does:
+The script will:
 
-- downloads the MNIST dataset into `./data` if it is not already present
-- initializes the experiment with `initial_subset_size=1000` and `confidence_threshold=0.98`
-- runs up to 10 self-training iterations
-- writes a timestamped result JSON under `output/`
-- opens a matplotlib plot of test accuracy by iteration
-
-## What Was Added
-
-Compared with the original self-training codebase, this version adds:
-
-- decision-tree training on the current labeled subset via scikit-learn
-- decision-tree evaluation on the MNIST test set each iteration
-- the extra scikit-learn and NumPy dependencies needed for that classical-model baseline step
+- download MNIST into `./data` if needed
+- run the iterative CNN self-training loop that expands the training subset
+- retrain and evaluate the decision tree as that subset evolves
+- save metrics to `output/experiment_result_<timestamp>.json`
+- open a matplotlib plot of CNN test accuracy over iterations
 
 ## Notes
 
-- The current experiment loop prints decision-tree accuracy, but only the CNN self-training metrics are persisted to the saved experiment result.
-- The repository currently uses plain `pip` plus [`requirements.txt`](/workspaces/medium/metamorphosis/requirements.txt); the old `poetry run ...` instruction in the previous README did not match the project files.
+- The repository uses `requirements.txt`; the older `poetry` command that was previously in this README did not match the project files.
